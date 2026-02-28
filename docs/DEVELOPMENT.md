@@ -1,81 +1,120 @@
 # 开发指南
 
-## 开发环境搭建
+更新日期：2026年02月28日
 
-### 必需工具
+## 1. 开发环境搭建
 
-- **Python 3.8+**: 后端开发
-- **代码编辑器**: VS Code / PyCharm / Vim
-- **浏览器**: Chrome / Firefox / Edge（带开发者工具）
-- **API 测试工具**: Postman / curl / HTTPie
+### 1.1 必需工具
 
-### 可选工具
+- **Python ≥ 3.13**：后端开发（以 `backend/.python-version` 或 pyproject.toml 为准）
+- **Node.js 18+**、**pnpm**：前端开发
+- **uv**（推荐）：后端 Python 包管理与虚拟环境
+- **代码编辑器**：VS Code / PyCharm / Vim
+- **浏览器**：Chrome / Firefox / Edge（带开发者工具）
+- **API 测试**：Postman / curl / HTTPie 或访问 http://localhost:8000/docs
 
-- **Git**: 版本控制
-- **Docker**: 容器化部署
-- **Nginx**: 反向代理
-- **uv**: 快速 Python 包管理器
+### 1.2 可选工具
+
+- **Git**：版本控制
+- **Docker**：容器化部署
+- **Nginx**：反向代理
 
 ---
 
-## 项目初始化
+## 2. 项目初始化
 
-### 克隆项目
+### 2.1 克隆项目
 
 ```bash
 git clone <repository-url>
-cd random-number-demo
+cd claw_task
 ```
 
-### 后端初始化
+### 2.2 后端初始化
+
+依赖以 `backend/pyproject.toml` 为准，使用 **uv**（推荐）：
 
 ```bash
 cd backend
 
-# 创建虚拟环境（推荐）
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
+# 创建虚拟环境并安装依赖
+uv venv --python 3.13
+source .venv/bin/activate   # Linux/macOS
 # 或 .venv\Scripts\activate  # Windows
 
-# 安装依赖
-pip install -r requirements.txt
-
-# 或使用 uv（更快）
-pip install uv
-uv pip install -r requirements.txt
+uv sync
 ```
 
-### 前端初始化
+若使用 pip（需先有 Python 3.13 与 venv）：
 
-前端使用纯 HTML/CSS/JS，无需构建步骤。
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+# 或：pip install fastapi "uvicorn[standard]" pydantic
+```
+
+### 2.3 前端初始化
+
+前端为 Vue 3 + Vite，需安装依赖并构建/开发：
+
+```bash
+cd frontend
+pnpm install
+```
+
+首次安装时 esbuild 会执行构建脚本（已在 `package.json` 的 `pnpm.onlyBuiltDependencies` 中配置）。
 
 ---
 
-## 开发工作流
+## 3. 开发工作流与运行命令
 
-### 1. 启动开发服务器
+### 3.1 一键启动（推荐）
 
-**后端（终端 1）**
+在项目根目录执行：
+
+```bash
+chmod +x start.sh stop.sh
+./start.sh
+```
+
+会同时启动后端（http://localhost:8000）和前端（http://localhost:5173）。停止：`Ctrl+C` 或 `./stop.sh`。
+
+### 3.2 分别启动
+
+**后端（终端 1）：**
+
 ```bash
 cd backend
 source .venv/bin/activate
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**前端（终端 2）**
+**前端（终端 2）：**
+
 ```bash
 cd frontend
-python -m http.server 3000
+pnpm dev
 ```
 
-### 2. 开发流程
+### 3.3 常用运行命令
+
+| 场景 | 命令 |
+|------|------|
+| 后端开发（热重载） | `cd backend && source .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0 --port 8000` |
+| 前端开发 | `cd frontend && pnpm dev` |
+| 前端构建 | `cd frontend && pnpm build` |
+| 前端预览构建结果 | `cd frontend && pnpm preview` |
+
+### 3.4 开发流程
 
 1. 修改代码
 2. 后端自动重载（uvicorn --reload）
-3. 刷新浏览器查看前端变化
-4. 测试功能是否正常
+3. 前端 Vite 热更新，浏览器自动刷新
+4. 在 http://localhost:8000/docs 或前端页面测试功能
 
-### 3. 代码规范
+### 3.5 代码规范
 
 #### Python 代码风格
 
@@ -92,7 +131,7 @@ def getNum():
     return random.randint(1,100)
 ```
 
-#### JavaScript 代码风格
+#### JavaScript / Vue 代码风格
 
 ```javascript
 // ✅ 使用 const/let
@@ -104,9 +143,9 @@ var apiUrl = 'http://localhost:8000/random';
 
 ---
 
-## 调试技巧
+## 4. 调试技巧
 
-### 后端调试
+### 4.1 后端调试
 
 #### 1. 使用 print 调试
 
@@ -131,7 +170,7 @@ import ipdb; ipdb.set_trace()
 
 访问 http://localhost:8000/docs 进行交互式调试
 
-### 前端调试
+### 4.2 前端调试
 
 #### 1. 浏览器开发者工具
 
@@ -159,57 +198,90 @@ async function fetchRandom() {
 
 ---
 
-## 测试
+## 5. 测试
 
-### 后端测试
+项目测试分布在 `backend/`、`tests/` 和（可选）`frontend/` 目录，后端与集成测试与当前代码一致，前端为 Vue 3 后原有基于静态 HTML 的脚本可能需配合构建结果或手动验证。
 
-创建 `backend/test_main.py`:
+### 5.1 后端测试
 
-```python
-from fastapi.testclient import TestClient
-from main import app
+**方式一：快速检查（backend 目录内）**
 
-client = TestClient(app)
-
-def test_read_root():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Random Number API"}
-
-def test_get_random_number():
-    response = client.get("/random")
-    assert response.status_code == 200
-    assert "number" in response.json()
-    assert 1 <= response.json()["number"] <= 100
-
-if __name__ == "__main__":
-    test_read_root()
-    test_get_random_number()
-    print("✅ 所有测试通过！")
-```
-
-运行测试：
+`backend/test_backend.py` 校验应用导入、随机数范围、路由注册与 CORS，无需启动服务：
 
 ```bash
 cd backend
-python test_main.py
-# 或使用 pytest
-pytest test_main.py -v
+source .venv/bin/activate
+python test_backend.py
 ```
 
-### 前端测试
+**方式二：完整 API 测试（项目根目录）**
 
-手动测试清单：
+`tests/test_backend.py` 使用 FastAPI `TestClient`，覆盖根路径、`/random`、响应格式、404、并发等：
 
-- [ ] 页面正常加载
-- [ ] 点击"获取随机数"按钮显示随机数
-- [ ] 自动刷新功能正常工作
-- [ ] 状态信息正确显示
-- [ ] 网络错误时有错误提示
+```bash
+# 在项目根目录执行（脚本会把 backend 加入路径）
+python tests/test_backend.py
+```
+
+包含的用例示例：
+
+- 应用导入、随机数生成、路由与 CORS
+- `GET /` 响应与 `message` 内容
+- `GET /random` 多次请求、范围 1–100、JSON 格式
+- 404、并发请求
+
+### 5.2 前端测试
+
+**自动化脚本（针对 HTML 结构）**
+
+`tests/test_frontend.py` 通过解析 `frontend/index.html` 检查文档结构、API URL、按钮与状态等。当前前端为 Vue 3 + Vite，入口 `index.html` 仅包含 `<div id="app">` 与脚本引用，逻辑在 `src/` 中，因此该脚本更适用于旧版静态单页或构建后的 `dist/index.html`（若需可改为读取构建产物）。
+
+在项目根目录运行：
+
+```bash
+python tests/test_frontend.py
+```
+
+**可选：frontend 目录内简易检查**
+
+```bash
+cd frontend
+python test_frontend.py
+```
+
+依赖当前目录下的 `index.html`（同上，Vue 项目下内容较少）。
+
+**手动 / 浏览器验证建议**
+
+- 执行 `pnpm dev` 后访问 http://localhost:5173
+- 检查：页面加载、点击获取随机数、自动刷新、状态与错误提示
+
+### 5.3 集成测试
+
+`tests/test_integration.py` 通过 HTTP 请求真实后端，需**先启动后端**（如 `uvicorn main:app --reload --host 0.0.0.0 --port 8000`）。测试项包括：API 连通性、`/random`、响应时间、并发、404/错误处理、数据范围一致性。
+
+```bash
+# 终端 1：启动后端
+cd backend && source .venv/bin/activate && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# 终端 2：在项目根目录运行集成测试
+python tests/test_integration.py
+```
+
+集成测试依赖 `requests`，若未安装：`uv pip install requests` 或 `pip install requests`（在 backend 虚拟环境中或单独环境均可）。
+
+### 5.4 一键运行所有测试
+
+```bash
+cd tests
+bash run_all_tests.sh
+```
+
+会依次执行后端测试、前端测试，并询问是否运行集成测试（选「是」时需保证后端已启动）。脚本内提示的启动命令以当前文档为准（后端 uvicorn，前端 `pnpm dev`）。
 
 ---
 
-## 常见问题
+## 6. 常见问题
 
 ### Q1: CORS 错误
 
@@ -253,7 +325,7 @@ return {"number": random.randint(1, 1000)}
 
 ---
 
-## 扩展功能建议
+## 7. 扩展功能建议
 
 ### 后端扩展
 
@@ -316,7 +388,7 @@ return {"number": random.randint(1, 1000)}
 
 ---
 
-## 性能优化
+## 8. 性能优化
 
 ### 后端优化
 
@@ -366,7 +438,7 @@ return {"number": random.randint(1, 1000)}
 
 ---
 
-## 学习资源
+## 9. 学习资源
 
 ### FastAPI
 - [官方文档](https://fastapi.tiangolo.com/)
@@ -382,7 +454,7 @@ return {"number": random.randint(1, 1000)}
 
 ---
 
-## 贡献指南
+## 10. 贡献指南
 
 1. Fork 项目
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)

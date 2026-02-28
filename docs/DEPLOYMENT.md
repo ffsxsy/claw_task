@@ -1,85 +1,108 @@
 # 部署文档
 
-## 开发环境部署
+更新日期：2026年02月28日
 
-### 环境要求
+## 1. 开发环境部署
 
-- Python 3.8+
-- pip 或 uv
+### 1.1 环境要求
+
+- **后端**：Python ≥ 3.13，[uv](https://docs.astral.sh/uv/)（推荐）或 pip
+- **前端**：Node.js 18+，[pnpm](https://pnpm.io/)
 - 现代浏览器
 
-### 后端部署
+### 1.2 后端环境与运行
 
-#### 1. 安装依赖
+**安装依赖（以 `backend/pyproject.toml` 为准）：**
 
 ```bash
 cd backend
-pip install -r requirements.txt
+uv venv --python 3.13
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+uv sync
 ```
 
-#### 2. 启动服务
+**启动服务：**
 
-**开发模式（支持热重载）**
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+| 模式 | 命令 |
+|------|------|
+| 开发（热重载） | `uvicorn main:app --reload --host 0.0.0.0 --port 8000` |
+| 生产（单进程） | `uvicorn main:app --host 0.0.0.0 --port 8000` |
+| 生产（多 worker） | `uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4` |
 
-**生产模式**
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
-```
-
-#### 3. 验证服务
+**验证：**
 
 ```bash
 curl http://localhost:8000/
 curl http://localhost:8000/random
 ```
 
-### 前端部署
+### 1.3 前端环境与运行
 
-#### 1. 本地服务器
+**安装依赖：**
 
 ```bash
 cd frontend
-python -m http.server 3000
+pnpm install
 ```
 
-访问 http://localhost:3000
+**运行：**
 
-#### 2. 使用 Live Server (VS Code)
+| 场景 | 命令 | 说明 |
+|------|------|------|
+| 开发 | `pnpm dev` | 开发服务器，默认 http://localhost:5173，热更新 |
+| 构建 | `pnpm build` | 输出到 `dist/` |
+| 预览构建结果 | `pnpm preview` | 本地预览 `dist/` |
 
-安装 "Live Server" 扩展，右键 `index.html` 选择 "Open with Live Server"
+开发时访问 http://localhost:5173，无需再用 `python -m http.server` 或 Live Server。
+
+### 1.4 一键启动
+
+在项目根目录：
+
+```bash
+./start.sh
+```
+
+会同时启动后端（8000）与前端（5173）。停止：`Ctrl+C` 或 `./stop.sh`。
 
 ---
 
-## 生产环境部署
+## 2. 生产环境部署
 
-### 方案 1: Nginx + Gunicorn
+### 2.1 方案一：Nginx + Uvicorn/Gunicorn
 
-#### 后端部署
+**后端：**
 
 ```bash
-# 安装 Gunicorn
-pip install gunicorn
-
-# 启动服务
 cd backend
+source .venv/bin/activate
+# 直接多进程可用：
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# 或使用 Gunicorn（需安装：uv add gunicorn）
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 ```
 
-#### Nginx 配置
+**前端：** 先构建再提供静态文件：
+
+```bash
+cd frontend
+pnpm build
+# 将 dist/ 目录部署到 Nginx 或任意静态服务器
+```
+
+**Nginx 配置示例：**
 
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
 
-    # 前端静态文件
+    # 前端静态文件（Vite 构建后的 dist）
     location / {
-        root /path/to/frontend;
+        root /path/to/claw_task/frontend/dist;
         index index.html;
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/ /index.html;
     }
 
     # 后端 API 代理
@@ -94,34 +117,42 @@ server {
 
 ---
 
-### 方案 2: Docker 部署
+### 2.2 方案二：Docker 部署
 
-#### Dockerfile (后端)
+#### Dockerfile（后端）
+
+（构建上下文为项目根目录，例：`docker build -f backend/Dockerfile .` 时需调整 COPY 路径）
 
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
 COPY backend/ .
+RUN pip install --no-cache-dir fastapi "uvicorn[standard]" pydantic
 
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-#### Dockerfile (前端)
+#### Dockerfile（前端）
+
+前端需先构建，再由 Nginx 提供静态文件：
 
 ```dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY frontend/ .
+RUN pnpm build
+
 FROM nginx:alpine
-
-COPY frontend/ /usr/share/nginx/html/
-
+COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
@@ -153,30 +184,30 @@ services:
 #### 启动服务
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
 
-### 方案 3: 云平台部署
+### 2.3 方案三：云平台部署
 
-#### Vercel (前端)
+**Vercel / Netlify（前端）：**
 
 ```bash
-npm i -g vercel
 cd frontend
-vercel
+pnpm build
+# 将 dist/ 或配置构建命令为 pnpm build、发布目录为 dist
 ```
 
-#### Render / Railway (后端)
+**Render / Railway（后端）：**
 
-连接 GitHub 仓库，配置：
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+连接 GitHub 仓库，配置示例：
+- Build：`cd backend && uv sync` 或 `pip install -e .`
+- Start：`uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 ---
 
-## 环境变量配置
+## 3. 环境变量配置
 
 创建 `.env` 文件（backend 目录）：
 
@@ -207,7 +238,7 @@ app.add_middleware(
 
 ---
 
-## 安全建议
+## 4. 安全建议
 
 1. **CORS 限制**: 生产环境指定允许的域名
 2. **HTTPS**: 使用 SSL 证书（Let's Encrypt）
@@ -217,7 +248,7 @@ app.add_middleware(
 
 ---
 
-## 监控和维护
+## 5. 监控和维护
 
 ### 健康检查
 
@@ -246,7 +277,7 @@ tail -f /var/log/nginx/error.log
 
 ---
 
-## 备份和恢复
+## 6. 备份和恢复
 
 ### 数据备份
 

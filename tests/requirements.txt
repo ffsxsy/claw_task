@@ -1,3 +1,2 @@
-# 测试依赖
-httpx
-requests
+# 仅集成测试需要（test_integration.py）
+requests>=2.28.0

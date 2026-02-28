@@ -1,87 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机数实时显示</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            text-align: center;
-            padding: 20px;
-        }
-        h1 { color: #333; }
-        .number {
-            font-size: 80px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin: 30px 0;
-        }
-        button {
-            font-size: 18px;
-            padding: 12px 24px;
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px;
-        }
-        button:hover { background-color: #1976D2; }
-        .status { margin-top: 20px; color: #666; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>随机数生成器 - Vue 3</title>
 </head>
 <body>
-    <h1>🎲 随机数生成器</h1>
-    <div class="number" id="number">--</div>
-    <button onclick="fetchRandom()">获取随机数</button>
-    <button onclick="toggleAuto()" id="autoBtn">自动刷新: 关</button>
-    <div class="status" id="status">点击按钮获取随机数</div>
-
-    <script>
-        const API_URL = 'http://localhost:8000/random';
-        let autoInterval = null;
-        let isAutoRunning = false;
-
-        async function fetchRandom() {
-            try {
-                document.getElementById('status').textContent = '请求中...';
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                document.getElementById('number').textContent = data.number;
-                document.getElementById('status').textContent = `获取成功: ${data.number}`;
-            } catch (error) {
-                document.getElementById('status').textContent = '错误: ' + error.message;
-            }
-        }
-
-        function toggleAuto() {
-            const btn = document.getElementById('autoBtn');
-            if (autoInterval) {
-                clearInterval(autoInterval);
-                autoInterval = null;
-                isAutoRunning = false;
-                btn.textContent = '自动刷新: 关';
-                document.getElementById('status').textContent = '自动刷新已停止';
-            } else {
-                fetchRandom();
-                autoInterval = setInterval(fetchRandom, 1000);
-                isAutoRunning = true;
-                btn.textContent = '自动刷新: 开';
-                document.getElementById('status').textContent = '自动刷新中 (每秒更新)';
-            }
-        }
-
-        // 页面加载初始化
-        function init() {
-            console.log('页面初始化完成');
-            document.getElementById('status').textContent = '点击按钮获取随机数';
-        }
-
-        // 页面加载时执行初始化
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
