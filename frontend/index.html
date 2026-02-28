@@ -43,6 +43,7 @@
     <script>
         const API_URL = 'http://localhost:8000/random';
         let autoInterval = null;
+        let isAutoRunning = false;
 
         async function fetchRandom() {
             try {
@@ -61,15 +62,26 @@
             if (autoInterval) {
                 clearInterval(autoInterval);
                 autoInterval = null;
+                isAutoRunning = false;
                 btn.textContent = '自动刷新: 关';
                 document.getElementById('status').textContent = '自动刷新已停止';
             } else {
                 fetchRandom();
                 autoInterval = setInterval(fetchRandom, 1000);
+                isAutoRunning = true;
                 btn.textContent = '自动刷新: 开';
                 document.getElementById('status').textContent = '自动刷新中 (每秒更新)';
             }
         }
+
+        // 页面加载初始化
+        function init() {
+            console.log('页面初始化完成');
+            document.getElementById('status').textContent = '点击按钮获取随机数';
+        }
+
+        // 页面加载时执行初始化
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
